@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Time Utility Hub</title>
+    
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- Custom CSS & Global Reset --- */
+        :root {
+            --primary-color: #3b82f6; /* blue-500 */
+            --bg-color: #0f172a;      /* slate-900 */
+            --card-color: #1e293b;    /* slate-800 */
+            --text-color: #f1f5f9;    /* slate-100 */
+            
+            /* Status Colors used in JS logic */
+            --green-400: #4ade80;
+            --yellow-400: #facc15;
+            --indigo-400: #818cf8;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+        }
+
+        /* ⚠️ CRITICAL: Required for JS mode switching */
+        .hidden {
+            display: none !important;
+        }
+
+        /* --- TYPOGRAPHY --- */
+        .time-display {
+            font-family: 'Space Mono', monospace;
+            font-size: clamp(3rem, 10vw, 6rem);
+            letter-spacing: -2px;
+            font-weight: 700;
+            line-height: 1.1;
+            margin: 1rem 0;
+            transition: color 0.3s ease;
+        }
+
+        .time-label {
+            font-family: 'Space Mono', monospace;
+            font-size: clamp(2rem, 8vw, 4rem);
+            font-weight: 700;
+        }
+
+        /* --- TABS --- */
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            transition: all 0.2s;
+            border-radius: 0.5rem;
+            color: var(--text-color);
+            font-weight: 500;
+            background: transparent;
+            border: 1px solid transparent;
+            cursor: pointer;
+        }
+
+        .tab-button.active {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .tab-button:not(.active):hover {
+            background-color: #334155; /* slate-700 */
+        }
+
+        /* --- INPUTS --- */
+        input[type="number"] {
+            background-color: #e2e8f0; /* slate-200 */
+            border: 1px solid #334155;
+            color: #0f172a;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: 'Space Mono', monospace;
+            font-size: 1.5rem;
+            text-align: center;
+            width: 80px;
+        }
+
+        /* Remove spin buttons */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* --- STOPWATCH --- */
+        .lap-time {
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* --- UTILITY COLORS FOR JS DYNAMIC CLASSES --- */
+        .text-green-400 { color: var(--green-400); }
+        .text-yellow-400 { color: var(--yellow-400); }
+        .text-indigo-400 { color: var(--indigo-400); }
+    </style>
+</head>
+<body>
+
+   <div id="app" class="w-full max-w-xl bg-slate-800 p-6 sm:p-8 rounded-xl shadow-2xl border border-slate-700">
+       
+       <!-- Header & Tab Navigation -->
+       <div class="mb-8">
+           <h1 class="text-3xl font-extrabold text-center mb-6 text-indigo-400 tracking-tight">Time Utility Hub</h1>
+           <div class="flex justify-center flex-wrap gap-2 bg-slate-700 p-2 rounded-lg">
+               <button class="tab-button active" data-mode="clock">Clock</button>
+               <button class="tab-button" data-mode="pomodoro">Pomodoro</button>
+               <button class="tab-button" data-mode="timer">Timer</button>
+               <button class="tab-button" data-mode="stopwatch">Stopwatch</button>
+           </div>
+       </div>
+
+       <!-- Content Area -->
+       <div id="content-area" class="text-center min-h-[300px]">
+
+           <!-- 1. Clock Mode (Default) -->
+           <div id="clock-mode" class="mode active">
+               <h2 class="text-xl font-semibold mb-4 text-slate-400 uppercase tracking-widest text-xs">Current Time</h2>
+               
+               <!-- Timezone Selector -->
+               <div class="flex justify-center items-center space-x-4 mb-4">
+                   <select id="timezone-select" class="p-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:ring-blue-500 focus:border-blue-500 transition shadow-md text-sm">
+                       <!-- Options populated by JavaScript -->
+                   </select>
+               </div>
+
+               <div id="clock-display" class="time-display text-blue-400">00:00:00</div>
+               <div id="date-display" class="text-lg text-slate-400 mt-2 font-medium"></div>
+           </div>
+
+           <!-- 2. Pomodoro Mode -->
+           <div id="pomodoro-mode" class="mode hidden">
+               <h2 id="pomodoro-status" class="text-2xl font-bold mb-4 text-green-400">Focus Time</h2>
+               <div id="pomodoro-display" class="time-label text-green-300">25:00</div>
+
+               <div class="flex justify-center space-x-4 mt-8">
+                   <button id="pomodoro-start-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg">Start</button>
+                   <button id="pomodoro-pause-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg hidden">Pause</button>
+                   <button id="pomodoro-reset-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg">Reset</button>
+               </div>
+           </div>
+
+           <!-- 3. Timer (Countdown) Mode -->
+           <div id="timer-mode" class="mode hidden">
+               <h2 class="text-2xl font-bold mb-4 text-orange-400">Countdown Timer</h2>
+               <div id="timer-display" class="time-label text-orange-300">00:00:00</div>
+
+               <!-- Time Setter Input -->
+               <div id="timer-setter" class="flex justify-center space-x-2 mt-6 text-black">
+                   <input type="number" id="timer-hours" min="0" max="99" value="0" placeholder="H">
+                   <input type="number" id="timer-minutes" min="0" max="59" value="0" placeholder="M">
+                   <input type="number" id="timer-seconds" min="0" max="59" value="0" placeholder="S">
+               </div>
+               <div id="timer-setter-btn-wrapper" class="mt-4">
+                    <button id="timer-set-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg transition duration-200 shadow-lg">Set Timer</button>
+               </div>
+
+               <div class="flex justify-center space-x-4 mt-6">
+                   <button id="timer-start-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg hidden">Start</button>
+                   <button id="timer-pause-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg hidden">Pause</button>
+                   <button id="timer-reset-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg">Reset</button>
+               </div>
+           </div>
+
+           <!-- 4. Stopwatch Mode -->
+           <div id="stopwatch-mode" class="mode hidden">
+               <h2 class="text-2xl font-bold mb-4 text-purple-400">Stopwatch</h2>
+               <div id="stopwatch-display" class="time-label text-purple-300">00:00:00.000</div>
+               
+               <div class="flex justify-center space-x-4 mt-6">
+                   <button id="stopwatch-start-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg">Start</button>
+                   <button id="stopwatch-pause-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg hidden">Pause</button>
+                   <button id="stopwatch-reset-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg">Reset</button>
+                   <button id="stopwatch-lap-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-lg hidden">Lap</button>
+               </div>
+
+               <div id="lap-times" class="mt-8 max-h-40 overflow-y-auto p-2 bg-slate-700 rounded-lg custom-scrollbar">
+                   <h3 class="text-sm font-semibold border-b border-slate-600 pb-2 mb-2 text-left text-slate-400 uppercase tracking-wider">Lap History</h3>
+                   <ul id="lap-list" class="space-y-1 text-left">
+                       <!-- Lap times will be inserted here -->
+                   </ul>
+               </div>
+           </div>
+
+       </div>
+   </div>
+
+   <!-- JAVASCRIPT LOGIC -->
+   <script>
+        // =================================================================
+        // GLOBAL STATE & CONSTANTS
+        // =================================================================
+
+        const DURATION_WORK = 25 * 60 * 1000; // 25 minutes
+        const DURATION_BREAK = 5 * 60 * 1000; // 5 minutes
+        const DURATION_LONG_BREAK = 15 * 60 * 1000; // 15 minutes
+        const LAPS_PER_LONG_BREAK = 4;
+
+        // Time zone data
+        const TIME_ZONES = [
+            { label: 'Local Time', zone: 'local' },
+            { label: 'UTC (Coordinated Universal Time)', zone: 'UTC' },
+            { label: 'New York (EST/EDT)', zone: 'America/New_York' },
+            { label: 'London (GMT/BST)', zone: 'Europe/London' },
+            { label: 'Tokyo (JST)', zone: 'Asia/Tokyo' },
+            { label: 'New Delhi (IST)', zone: 'Asia/Kolkata' },
+            { label: 'Sydney (AEST/AEDT)', zone: 'Australia/Sydney' },
+            { label: 'Berlin (CET/CEST)', zone: 'Europe/Berlin' },
+        ];
+
+        let currentMode = 'clock';
+        let clockInterval = null;
+        let sound = new Audio('https://s3-us-west-2.amazonaws.com/s.cdpn.io/3/success.mp3'); // Simple chime
+
+        // --- Timezone State ---
+        let selectedTimezone = 'local';
+
+        // --- Pomodoro State ---
+        let pomodoroInterval = null;
+        let pomodoroRemainingTime = DURATION_WORK;
+        let pomodoroIsRunning = false;
+        let pomodoroCycle = 'work'; // 'work' | 'break' | 'longBreak'
+        let pomodoroWorkLaps = 0;
+
+        // --- Timer State ---
+        let timerInterval = null;
+        let timerTotalDuration = 0;
+        let timerRemainingTime = 0;
+        let timerIsRunning = false;
+
+        // --- Stopwatch State ---
+        let stopwatchInterval = null;
+        let stopwatchStartTime = 0;
+        let stopwatchElapsedTime = 0;
+        let stopwatchIsRunning = false;
+        let stopwatchLapCount = 0;
+        let stopwatchLapTimes = [];
+
+        // =================================================================
+        // DOM ELEMENTS
+        // =================================================================
+        const $ = (id) => document.getElementById(id);
+
+        const clockDisplay = $('clock-display');
+        const dateDisplay = $('date-display');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const timezoneSelect = $('timezone-select');
+
+        // Pomodoro DOM
+        const pomodoroDisplay = $('pomodoro-display');
+        const pomodoroStatus = $('pomodoro-status');
+        const pomodoroStartBtn = $('pomodoro-start-btn');
+        const pomodoroPauseBtn = $('pomodoro-pause-btn');
+        const pomodoroResetBtn = $('pomodoro-reset-btn');
+
+        // Timer DOM
+        const timerDisplay = $('timer-display');
+        const timerSetBtn = $('timer-set-btn');
+        const timerStartBtn = $('timer-start-btn');
+        const timerPauseBtn = $('timer-pause-btn');
+        const timerResetBtn = $('timer-reset-btn');
+        const timerHours = $('timer-hours');
+        const timerMinutes = $('timer-minutes');
+        const timerSeconds = $('timer-seconds');
+        const timerSetter = $('timer-setter');
+
+        // Stopwatch DOM
+        const stopwatchDisplay = $('stopwatch-display');
+        const stopwatchStartBtn = $('stopwatch-start-btn');
+        const stopwatchPauseBtn = $('stopwatch-pause-btn');
+        const stopwatchResetBtn = $('stopwatch-reset-btn');
+        const stopwatchLapBtn = $('stopwatch-lap-btn');
+        const lapList = $('lap-list');
+
+        /**
+         * Converts milliseconds to HH:MM:SS format.
+         */
+        function formatTime(ms, includeMillis = false) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            const milliseconds = includeMillis ? Math.floor(ms % 1000) : 0; 
+
+            const pad = (num, length = 2) => String(num).padStart(length, '0');
+
+            if (includeMillis) {
+                return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(milliseconds, 3)}`;
+            } else if (hours > 0) {
+                return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+            } else {
+                return `${pad(minutes)}:${pad(seconds)}`;
+            }
+        }
+
+        // =================================================================
+        // UI AND MODE MANAGEMENT
+        // =================================================================
+
+        function changeMode(newMode) {
+            // Stop any running intervals from the old mode
+            if (currentMode === 'clock') clearInterval(clockInterval);
+            if (currentMode === 'pomodoro' && pomodoroIsRunning) pausePomodoro(true);
+            if (currentMode === 'timer' && timerIsRunning) pauseTimer(true);
+            if (currentMode === 'stopwatch' && stopwatchIsRunning) pauseStopwatch(true);
+
+            currentMode = newMode;
+            
+            // Update Tab styles
+            tabButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === newMode);
+            });
+
+            // Update Content visibility
+            document.querySelectorAll('.mode').forEach(modeDiv => {
+                modeDiv.classList.add('hidden');
+                modeDiv.classList.remove('active');
+            });
+            const activeModeDiv = $(`${newMode}-mode`);
+            if (activeModeDiv) {
+                activeModeDiv.classList.remove('hidden');
+                activeModeDiv.classList.add('active');
+            }
+
+            // Start interval for the new mode
+            if (newMode === 'clock') {
+                startClock();
+            } else if (newMode === 'pomodoro') {
+                updatePomodoroDisplay();
+            } else if (newMode === 'timer') {
+                updateTimerDisplay();
+            } else if (newMode === 'stopwatch') {
+                updateStopwatchDisplay();
+            }
+        }
+
+        // =================================================================
+        // 1. DIGITAL CLOCK LOGIC
+        // =================================================================
+
+        function updateClock() {
+            const now = new Date();
+            let timeZone = selectedTimezone === 'local' ? undefined : selectedTimezone;
+            let locale = 'en-US';
+
+            const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: timeZone };
+            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: timeZone };
+            
+            clockDisplay.textContent = now.toLocaleTimeString(locale, timeOptions);
+            dateDisplay.textContent = now.toLocaleDateString(locale, dateOptions);
+        }
+
+        function startClock() {
+            updateClock();
+            clockInterval = setInterval(updateClock, 1000); 
+        }
+
+        // =================================================================
+        // 2. POMODORO LOGIC
+        // =================================================================
+
+        function updatePomodoroDisplay() {
+            pomodoroDisplay.textContent = formatTime(pomodoroRemainingTime);
+            
+            let statusText = '';
+            let statusColor = 'text-green-400';
+            
+            if (pomodoroCycle === 'work') {
+                statusText = 'Focus Time';
+                statusColor = 'text-green-400';
+            } else {
+                statusText = 'Break Time';
+                statusColor = pomodoroCycle === 'longBreak' ? 'text-indigo-400' : 'text-yellow-400';
+            }
+            
+            pomodoroStatus.className = `text-2xl font-bold mb-4 ${statusColor}`;
+            pomodoroStatus.textContent = statusText;
+            
+            if (pomodoroIsRunning) {
+                pomodoroStartBtn.classList.add('hidden');
+                pomodoroPauseBtn.classList.remove('hidden');
+            } else {
+                pomodoroStartBtn.classList.remove('hidden');
+                pomodoroPauseBtn.classList.add('hidden');
+            }
+        }
+
+        function startPomodoro() {
+            if (pomodoroIsRunning) return;
+            pomodoroIsRunning = true;
+            
+            let startTime = Date.now();
+            let expectedEndTime = startTime + pomodoroRemainingTime;
+
+            pomodoroInterval = setInterval(() => {
+                const now = Date.now();
+                pomodoroRemainingTime = expectedEndTime - now;
+                
+                if (pomodoroRemainingTime <= 0) {
+                    clearInterval(pomodoroInterval);
+                    pomodoroRemainingTime = 0;
+                    updatePomodoroDisplay();
+                    sound.play();
+                    handlePomodoroCompletion();
+                } else {
+                    updatePomodoroDisplay();
+                }
+            }, 100);
+            updatePomodoroDisplay();
+        }
+
+        function pausePomodoro(silent = false) {
+            if (!pomodoroIsRunning) return;
+            clearInterval(pomodoroInterval);
+            pomodoroIsRunning = false;
+            updatePomodoroDisplay();
+            if (!silent) console.log('Pomodoro Paused');
+        }
+
+        function resetPomodoro() {
+            clearInterval(pomodoroInterval);
+            pomodoroIsRunning = false;
+            pomodoroRemainingTime = DURATION_WORK;
+            pomodoroCycle = 'work';
+            pomodoroWorkLaps = 0;
+            updatePomodoroDisplay();
+        }
+
+        function handlePomodoroCompletion() {
+            if (pomodoroCycle === 'work') {
+                pomodoroWorkLaps++;
+                if (pomodoroWorkLaps % LAPS_PER_LONG_BREAK === 0) {
+                    pomodoroCycle = 'longBreak';
+                    pomodoroRemainingTime = DURATION_LONG_BREAK;
+                } else {
+                    pomodoroCycle = 'break';
+                    pomodoroRemainingTime = DURATION_BREAK;
+                }
+            } else {
+                pomodoroCycle = 'work';
+                pomodoroRemainingTime = DURATION_WORK;
+            }
+            startPomodoro();
+        }
+
+        // =================================================================
+        // 3. TIMER LOGIC
+        // =================================================================
+
+        function updateTimerDisplay() {
+            timerDisplay.textContent = formatTime(timerRemainingTime, false);
+            
+            const isSet = timerTotalDuration > 0;
+            const isZero = timerRemainingTime === 0;
+
+            if (timerIsRunning) {
+                timerSetter.classList.add('hidden');
+                timerStartBtn.classList.add('hidden');
+                timerPauseBtn.classList.remove('hidden');
+            } else if (isSet && !isZero) {
+                timerSetter.classList.add('hidden');
+                timerStartBtn.classList.remove('hidden');
+                timerPauseBtn.classList.add('hidden');
+            } else {
+                timerSetter.classList.remove('hidden');
+                timerStartBtn.classList.add('hidden');
+                timerPauseBtn.classList.add('hidden');
+            }
+        }
+
+        function setTimer() {
+            const h = Math.abs(Math.floor(parseInt(timerHours.value) || 0));
+            const m = Math.abs(Math.floor(parseInt(timerMinutes.value) || 0));
+            const s = Math.abs(Math.floor(parseInt(timerSeconds.value) || 0));
+            
+            if (h === 0 && m === 0 && s === 0) return;
+
+            const totalMs = (h * 3600 + m * 60 + s) * 1000;
+            timerTotalDuration = totalMs;
+            timerRemainingTime = totalMs;
+            
+            timerHours.value = 0;
+            timerMinutes.value = 0;
+            timerSeconds.value = 0;
+
+            updateTimerDisplay();
+        }
+
+        function startTimer() {
+            if (timerIsRunning || timerRemainingTime <= 0) return;
+            timerIsRunning = true;
+            
+            let startTime = Date.now();
+            let expectedEndTime = startTime + timerRemainingTime;
+
+            timerInterval = setInterval(() => {
+                const now = Date.now();
+                timerRemainingTime = expectedEndTime - now;
+                
+                if (timerRemainingTime <= 0) {
+                    clearInterval(timerInterval);
+                    timerRemainingTime = 0;
+                    timerIsRunning = false;
+                    updateTimerDisplay();
+                    sound.play();
+                    timerSetBtn.classList.remove('hidden');
+                } else {
+                    updateTimerDisplay();
+                }
+            }, 100);
+            updateTimerDisplay();
+        }
+
+        function pauseTimer(silent = false) {
+            if (!timerIsRunning) return;
+            clearInterval(timerInterval);
+            timerIsRunning = false;
+            updateTimerDisplay();
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timerIsRunning = false;
+            timerTotalDuration = 0;
+            timerRemainingTime = 0;
+            updateTimerDisplay();
+        }
+
+        // =================================================================
+        // 4. STOPWATCH LOGIC
+        // =================================================================
+
+        function updateStopwatchDisplay() {
+            stopwatchDisplay.textContent = formatTime(stopwatchElapsedTime, true);
+            
+            stopwatchLapBtn.classList.toggle('hidden', !stopwatchIsRunning);
+            
+            if (stopwatchIsRunning) {
+                stopwatchStartBtn.classList.add('hidden');
+                stopwatchPauseBtn.classList.remove('hidden');
+            } else {
+                stopwatchStartBtn.classList.remove('hidden');
+                stopwatchPauseBtn.classList.add('hidden');
+            }
+        }
+
+        function startStopwatch() {
+            if (stopwatchIsRunning) return;
+            stopwatchIsRunning = true;
+            
+            stopwatchStartTime = Date.now() - stopwatchElapsedTime; 
+
+            stopwatchInterval = setInterval(() => {
+                stopwatchElapsedTime = Date.now() - stopwatchStartTime;
+                updateStopwatchDisplay();
+            }, 10); 
+            updateStopwatchDisplay();
+        }
+
+        function pauseStopwatch(silent = false) {
+            if (!stopwatchIsRunning) return;
+            clearInterval(stopwatchInterval);
+            stopwatchIsRunning = false;
+            updateStopwatchDisplay();
+        }
+
+        function resetStopwatch() {
+            clearInterval(stopwatchInterval);
+            stopwatchIsRunning = false;
+            stopwatchElapsedTime = 0;
+            stopwatchLapCount = 0;
+            stopwatchLapTimes = [];
+            lapList.innerHTML = '';
+            updateStopwatchDisplay();
+        }
+
+        function lapStopwatch() {
+            if (!stopwatchIsRunning) return;
+            
+            const currentTotalTime = stopwatchElapsedTime;
+            const previousTotalTime = stopwatchLapTimes.length > 0 ? stopwatchLapTimes[0].totalMs : 0;
+            const lapDuration = currentTotalTime - previousTotalTime;
+
+            stopwatchLapCount++;
+            
+            const lapEntry = { id: stopwatchLapCount, durationMs: lapDuration, totalMs: currentTotalTime };
+            stopwatchLapTimes.unshift(lapEntry);
+            renderLapTimes();
+        }
+
+        function renderLapTimes() {
+            lapList.innerHTML = ''; 
+            
+            stopwatchLapTimes.forEach((lap, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between text-sm py-2 px-2 border-b border-slate-600 last:border-b-0 hover:bg-slate-700/50 transition';
+                
+                const lapNumber = stopwatchLapTimes.length - index;
+                
+                li.innerHTML = `
+                    <span class="text-slate-400 font-bold w-12">#${lapNumber}</span>
+                    <span class="lap-time text-slate-200 font-mono">${formatTime(lap.totalMs, true)}</span>
+                    <span class="lap-time text-indigo-300 font-mono text-right">+${formatTime(lap.durationMs, true)}</span>
+                `;
+                lapList.appendChild(li);
+            });
+        }
+
+        // =================================================================
+        // INITIALIZATION
+        // =================================================================
+
+        function initApp() {
+            // Populate Timezones
+            TIME_ZONES.forEach(tz => {
+                const option = document.createElement('option');
+                option.value = tz.zone;
+                option.textContent = tz.label;
+                timezoneSelect.appendChild(option);
+            });
+            
+            timezoneSelect.addEventListener('change', (e) => {
+                selectedTimezone = e.target.value;
+                updateClock();
+            });
+
+            changeMode('clock');
+            
+            // Event Listeners
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => changeMode(button.dataset.mode));
+            });
+
+            pomodoroStartBtn.addEventListener('click', startPomodoro);
+            pomodoroPauseBtn.addEventListener('click', () => pausePomodoro(false));
+            pomodoroResetBtn.addEventListener('click', resetPomodoro);
+            
+            timerSetBtn.addEventListener('click', setTimer);
+            timerStartBtn.addEventListener('click', startTimer);
+            timerPauseBtn.addEventListener('click', () => pauseTimer(false));
+            timerResetBtn.addEventListener('click', resetTimer);
+            
+            stopwatchStartBtn.addEventListener('click', startStopwatch);
+            stopwatchPauseBtn.addEventListener('click', () => pauseStopwatch(false));
+            stopwatchResetBtn.addEventListener('click', resetStopwatch);
+            stopwatchLapBtn.addEventListener('click', lapStopwatch);
+            
+            console.log('Time Hub initialized.');
+        }
+
+        window.onload = initApp;
+   </script>
+</body>
+</html>

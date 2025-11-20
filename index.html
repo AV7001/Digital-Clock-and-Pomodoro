@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Digital Clock + Pomodoro Timer</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+   <div id="app" class="w-full max-w-xl bg-slate-800 p-6 sm:p-8 rounded-xl shadow-2xl">
+        
+        <!-- Header & Tab Navigation -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-extrabold text-center mb-6 text-indigo-400">Time Utility Hub</h1>
+            <div class="flex justify-center space-x-2 sm:space-x-4 bg-slate-700 p-2 rounded-lg">
+                <button class="tab-button active" data-mode="clock">Clock</button>
+                <button class="tab-button" data-mode="pomodoro">Pomodoro</button>
+                <button class="tab-button" data-mode="timer">Timer</button>
+                <button class="tab-button" data-mode="stopwatch">Stopwatch</button>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div id="content-area" class="text-center min-h-[300px]">
+
+            <!-- 1. Clock Mode (Default) - Now includes Timezone Selector -->
+            <div id="clock-mode" class="mode active">
+                <h2 class="text-xl font-semibold mb-4 text-slate-400">Current Time</h2>
+                
+                <!-- Timezone Selector -->
+                <div class="flex justify-center items-center space-x-4 mb-4">
+                    <select id="timezone-select" class="p-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:ring-blue-500 focus:border-blue-500 transition shadow-md">
+                        <!-- Options populated by JavaScript -->
+                    </select>
+                </div>
+
+                <div id="clock-display" class="time-display text-blue-400">00:00:00</div>
+                <div id="date-display" class="text-lg text-slate-400 mt-2"></div>
+            </div>
+
+            <!-- 2. Pomodoro Mode (Includes LLM Goal Generator) -->
+            <div id="pomodoro-mode" class="mode hidden">
+                <h2 id="pomodoro-status" class="text-2xl font-bold mb-4 text-green-400">Focus Time</h2>
+                <div class="flex items-center justify-center space-x-2 mb-4">
+                    <button class="pomodoro-down bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded font-bold">-</button>
+                    <div id="pomodoro-display" class="time-label text-green-300">25:00</div>
+                    <button class="pomodoro-up bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded font-bold">+</button>
+                </div>
+
+
+
+                <div class="flex justify-center space-x-4 mt-6">
+                    <button id="pomodoro-start-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200">Start</button>
+                    <button id="pomodoro-pause-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 hidden">Pause</button>
+                    <button id="pomodoro-reset-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200">Reset</button>
+                </div>
+            </div>
+
+            <!-- 3. Timer (Countdown) Mode -->
+            <div id="timer-mode" class="mode hidden">
+                <h2 class="text-2xl font-bold mb-4 text-orange-400">Countdown Timer</h2>
+                <div id="timer-display" class="time-label text-orange-300">00:00:00</div>
+
+                <!-- Time Setter Input -->
+                <div id="timer-setter" class="flex flex-col items-center space-y-2 mt-4 text-black">
+                    <div class="flex items-center space-x-2">
+                        <label class="text-white">H:</label>
+                        <button class="timer-down bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded" data-target="timer-hours">-</button>
+                        <input type="number" id="timer-hours" min="0" max="99" value="0" placeholder="H" class="w-16 p-2 rounded-md bg-slate-200 text-center font-bold">
+                        <button class="timer-up bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded" data-target="timer-hours">+</button>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label class="text-white">M:</label>
+                        <button class="timer-down bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded" data-target="timer-minutes">-</button>
+                        <input type="number" id="timer-minutes" min="0" max="59" value="0" placeholder="M" class="w-16 p-2 rounded-md bg-slate-200 text-center font-bold">
+                        <button class="timer-up bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded" data-target="timer-minutes">+</button>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label class="text-white">S:</label>
+                        <button class="timer-down bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded" data-target="timer-seconds">-</button>
+                        <input type="number" id="timer-seconds" min="0" max="59" value="0" placeholder="S" class="w-16 p-2 rounded-md bg-slate-200 text-center font-bold">
+                        <button class="timer-up bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded" data-target="timer-seconds">+</button>
+                    </div>
+                    <button id="timer-set-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 mt-2">Set</button>
+                </div>
+
+                <div class="flex justify-center space-x-4 mt-6">
+                    <button id="timer-start-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 hidden">Start</button>
+                    <button id="timer-pause-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 hidden">Pause</button>
+                    <button id="timer-reset-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200">Reset</button>
+                </div>
+            </div>
+
+            <!-- 4. Stopwatch Mode -->
+            <div id="stopwatch-mode" class="mode hidden">
+                <h2 class="text-2xl font-bold mb-4 text-purple-400">Stopwatch</h2>
+                <div id="stopwatch-display" class="time-label text-purple-300">00:00:00.000</div>
+                
+                <div class="flex justify-center space-x-4 mt-6">
+                    <button id="stopwatch-start-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200">Start</button>
+                    <button id="stopwatch-pause-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 hidden">Pause</button>
+                    <button id="stopwatch-reset-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200">Reset</button>
+                    <button id="stopwatch-lap-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 hidden">Lap</button>
+                </div>
+
+                <div id="lap-times" class="mt-8 max-h-40 overflow-y-auto p-2 bg-slate-700 rounded-lg">
+                    <h3 class="text-lg font-semibold border-b border-slate-600 pb-2 mb-2 text-left">Lap History</h3>
+                    <ul id="lap-list" class="space-y-1 text-left">
+                        <!-- Lap times will be inserted here -->
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <script src="scripts.js"></script>
+</body>
+</html>
